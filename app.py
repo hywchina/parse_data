@@ -168,22 +168,31 @@ col1, col2 = st.columns([1, 1])
 
 if "running" not in st.session_state:
     st.session_state["running"] = False
+if "finished" not in st.session_state:
+    st.session_state["finished"] = False
 
 with col1:
     if not st.session_state["running"]:
         if st.button("🚀 开始执行全部步骤", type="primary", use_container_width=True):
             st.session_state["running"] = True
-            progress_bar = st.progress(0.0)
-            logs = run_pipeline_realtime(log_area, steps_placeholder, progress_bar)
-            st.success("✅ 所有步骤已执行完成！")
-            st.session_state["running"] = False
+            st.session_state["finished"] = False
+            st.rerun()  # 手动刷新页面，显示“正在执行中”状态
     else:
         st.button("⏳ 正在运行中...", disabled=True, use_container_width=True)
+        progress_bar = st.progress(0.0)
+        logs = run_pipeline_realtime(log_area, steps_placeholder, progress_bar)
+        st.session_state["running"] = False
+        st.session_state["finished"] = True
+        st.rerun()  # 执行完后再刷新，回到完成状态
 
 with col2:
     if st.button("🧹 清空过程文件", use_container_width=True):
         clean_folders()
         st.success("✅ 已清理 data_00~05 目录。")
+
+# 显示完成提示
+if st.session_state["finished"]:
+    st.success("✅ 所有步骤已执行完成！")
 
 st.markdown("---")
 st.subheader("📦 打包并下载结果 ZIP")
