@@ -3,8 +3,8 @@ import json
 import os
 
 # ========== 1️⃣ 文件路径（请修改为你自己的） ==========
-input_dir = "/home/huyanwei/projects/parse_data/data_01_csv"  # 输入文件夹
-output_dir = "/home/huyanwei/projects/parse_data/data_03_json"  # 输出文件夹
+input_dir = "./data_01_csv"  # 输入文件夹
+output_dir = "./data_03_json"  # 输出文件夹
 
 file_检查 = f"{input_dir}/检查信息.csv"
 file_检验 = f"{input_dir}/检验信息.csv"

@@ -4,8 +4,8 @@ import shutil
 from PyPDF2 import PdfReader
 
 # ========== 1️⃣ 配置路径 ==========
-data_ori = "/home/huyanwei/projects/parse_data/data_00_ori"   # 原始 PDF 文件夹
-data_pdf = "/home/huyanwei/projects/parse_data/data_02_pdf"   # 输出文件夹
+data_ori = "./data_00_ori"   # 原始 PDF 文件夹
+data_pdf = "./data_02_pdf"   # 输出文件夹
 
 os.makedirs(data_pdf, exist_ok=True)
 

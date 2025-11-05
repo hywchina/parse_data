@@ -51,9 +51,9 @@ def merge_pdfs(pdf_list, output_path):
 
 def main():
     # ======== 配置区域 ========
-    pdf_dir = "/home/huyanwei/projects/parse_data/data_02_pdf"
-    txt_dir = "/home/huyanwei/projects/parse_data/data_04_summary_txt"
-    output_dir = "/home/huyanwei/projects/parse_data/data_05_final_pdf"
+    pdf_dir = "./data_02_pdf"
+    txt_dir = "./data_04_summary_txt"
+    output_dir = "./data_05_final_pdf"
     os.makedirs(output_dir, exist_ok=True)
     # ==========================
 

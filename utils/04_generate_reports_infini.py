@@ -3,10 +3,10 @@ import re
 from openai import OpenAI
 
 # ========== 用户配置 ==========
-INPUT_JSON_DIR = "/home/huyanwei/projects/parse_data/data_03_json"
-PDF_DIR = "/home/huyanwei/projects/parse_data/data_02_pdf"  # 新增 PDF 对应目录
-PROMPT_FILE = "/home/huyanwei/projects/parse_data/prompt.txt"
-OUTPUT_DIR = "/home/huyanwei/projects/parse_data/data_04_summary_txt"
+INPUT_JSON_DIR = "./data_03_json"
+PDF_DIR = "./data_02_pdf"  # 新增 PDF 对应目录
+PROMPT_FILE = "./prompt.txt"
+OUTPUT_DIR = "./data_04_summary_txt"
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 

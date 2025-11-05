@@ -2,8 +2,8 @@ import os
 import pandas as pd
 
 # ========== 路径配置 ==========
-data_ori = "/home/huyanwei/projects/parse_data/data_00_ori"
-data_csv = "/home/huyanwei/projects/parse_data/data_01_csv"
+data_ori = "./data_00_ori"
+data_csv = "./data_01_csv"
 os.makedirs(data_csv, exist_ok=True)
 
 

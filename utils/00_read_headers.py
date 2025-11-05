@@ -2,7 +2,7 @@ import pandas as pd
 import os
 
 # ===== 文件路径配置（请根据你的路径修改） =====
-base_dir = "/home/huyanwei/projects/parse_data/data_01_csv/"
+base_dir = "./data_01_csv/"
 files = {
     "检查信息": f"{base_dir}检查信息.csv",
     "病案首页": f"{base_dir}病案首页.csv",
