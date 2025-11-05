@@ -38,4 +38,4 @@ for name, path in files.items():
 # with open("各表字段汇总.json", "w", encoding="utf-8") as f:
 #     json.dump(headers_dict, f, ensure_ascii=False, indent=2)
 
-print("\n✅ 已生成文件：各表字段汇总.json")
+# print("\n✅ 已生成文件：各表字段汇总.json")
