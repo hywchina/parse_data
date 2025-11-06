@@ -5,7 +5,7 @@ from openai import OpenAI
 # ========== 用户配置 ==========
 INPUT_JSON_DIR = "./data_03_json"
 PDF_DIR = "./data_02_pdf"  # 新增 PDF 对应目录
-PROMPT_FILE = "./prompt.txt"
+PROMPT_FILE = "./conf/prompt.txt"
 OUTPUT_DIR = "./data_04_summary_txt"
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)

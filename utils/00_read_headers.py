@@ -33,9 +33,9 @@ for name, path in files.items():
     print(f"\n📘 {name} 表头字段（共 {len(headers)} 个）：")
     print(headers)
 
-# # ===== 可选：保存为一个 JSON 文件 =====
-# import json
-# with open("各表字段汇总.json", "w", encoding="utf-8") as f:
-#     json.dump(headers_dict, f, ensure_ascii=False, indent=2)
+# ===== 可选：保存为一个 JSON 文件 =====
+import json
+with open("./conf/headers.json", "w", encoding="utf-8") as f:
+    json.dump(headers_dict, f, ensure_ascii=False, indent=2)
 
-# print("\n✅ 已生成文件：各表字段汇总.json")
+print("\n✅ 已生成文件：各表字段汇总.json")
