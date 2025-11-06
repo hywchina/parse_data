@@ -34,6 +34,19 @@ SCRIPTS = [
     ("05_merge_txt_to_pdf.py", "合并报告与 PDF"),
 ]
 
+recommended_fields_FILE = os.path.join(CONF_DIR, "recommended_fields.json")
+# ✅ 从配置文件读取推荐字段
+if os.path.exists(recommended_fields_FILE):
+    try:
+        with open(recommended_fields_FILE, "r", encoding="utf-8") as f:
+            recommended_fields = json.load(f)
+    except Exception as e:
+        st.warning(f"⚠️ 无法读取推荐字段配置：{e}")
+        recommended_fields = {}
+else:
+    st.info("ℹ️ 未找到 recommended_fields.json，字段推荐功能将跳过。")
+    recommended_fields = {}
+
 
 # ---------------- 工具函数 ----------------
 def clean_folders():
@@ -144,7 +157,6 @@ if "step" not in st.session_state:
 if "header_edit_done" not in st.session_state:
     st.session_state["header_edit_done"] = False
 
-# 当用户点击上传并保存时：先清空，再保存文件
 # 当用户点击上传并保存时：先清空，再保存文件
 if uploaded_files:
     file_names = [f.name for f in uploaded_files]
@@ -272,19 +284,44 @@ if st.session_state["running"]:
                     st.success("✅ 已读取 CSV 表头，请选择需要保留的字段（各表）并确认保存以继续。")
                     st.markdown("### 🧩 字段选择区（多选）")
                     new_headers = {}
+                    # ✅ 在文件顶部或靠前定义推荐字段
+
                     for table_name, fields in headers_data.items():
                         st.markdown(f"**📘 {table_name}**")
-                        # 保证 key 唯一稳定
+
+                        # ✅ 推荐字段提示
+                        recommended = recommended_fields.get(table_name)
+                        if recommended:
+                            st.markdown(
+                                f"<div style='color:#999;font-size:13px;margin-bottom:6px;'>"
+                                f"💡 推荐字段：<span style='color:#007bff;'>{'，'.join(recommended)}</span>"
+                                f"</div>",
+                                unsafe_allow_html=True,
+                            )
+                            # ✅ 过滤出推荐字段中实际存在的部分
+                            default = [f for f in recommended if f in fields]
+                            if not default:
+                                default = fields  # 如果推荐字段一个都不在 header 里，则退回默认全选
+                        else:
+                            st.markdown(
+                                "<div style='color:#999;font-size:13px;margin-bottom:6px;'>💡 暂无推荐字段</div>",
+                                unsafe_allow_html=True,
+                            )
+                            default = fields  # 没推荐字段则默认全选
+
+                        # ✅ 唯一 key 保持不变
                         key = f"sel_{table_name}"
-                        # 如果字段很多，默认只勾选之前保存的（或全部）
-                        default = fields
+
+                        # ✅ 字段多选
                         selected = st.multiselect(
                             f"选择要保留的字段（{table_name}）",
                             options=fields,
                             default=default,
                             key=key
                         )
+
                         new_headers[table_name] = selected
+
 
                     if st.button("✅ 确认保存并继续执行"):
                         try:

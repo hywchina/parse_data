@@ -1,6 +1,7 @@
 import pandas as pd
 import json
 import os
+import numpy as np
 
 # ========== 1️⃣ 文件路径（请修改为你自己的） ==========
 input_dir = "./data_01_csv"  # 输入文件夹
@@ -16,18 +17,42 @@ file_医嘱 = f"{input_dir}/医嘱信息.csv"
 with open(headers_file, "r", encoding="utf-8") as f:
     FIELDS = json.load(f)
 
-# 如果需要选择部分字段，可以在这里进一步筛选，例如：
-# FIELDS["病案首页"] = FIELDS["病案首页"][:10]  # 示例，只保留前10个字段
-
-# 筛选过后的
-# FIELDS = { "病案首页" :[ "病案号","住院次数","入院日期","出院日期","性别","出生日期","年龄","出院科室", "出院诊断编码","出院诊断","出院诊断1编码","出院诊断1名称","出院诊断2编码","出院诊断2名称", "出院诊断3编码","出院诊断3名称","过敏药物","手术治疗及操作编码","手术治疗及操作名称","操作日期", "住院总费用","住院总费用其中自付金额","一般医疗服务费","一般治疗操作费","护理费", "综合医疗服务类其他费用","病理诊断费","实验室诊断费","影像学诊断费","临床诊断项目费", "非手术治疗项目费","其中：临床物理治疗费","手术治疗费","其中：麻醉费","其中：手术费", "康复费","中医治疗费","西药费","其中：抗菌药物费","中成药费","中草药费","血费", "白蛋白类制品费","球蛋白类制品费","凝血因子类制品费","细胞因子类制品费", "检查用一次性医用材料费","治疗用一次性医用材料费","手术用一次性医用材料费","其他费：" ], "检验信息":[ "病案号","检验项目","检验项目名称","检验结果","检验标志","阴阳性","单位","标本","采集时间","报告日期" ], "检查信息": [ "病案号","医嘱名称","检查结果","报告时间" ], "医嘱信息": [ "病案号","医嘱类型","医嘱分类","医嘱名称","医嘱开始时间","医嘱结束时间","医嘱状态名称","费用分类名称","药品规格","药品剂型名称" ] }
+# ========== 新增：删除NaN值的辅助函数 ==========
+def remove_nan_values(obj):
+    """递归删除字典或列表中的NaN值"""
+    if isinstance(obj, dict):
+        cleaned_dict = {}
+        for k, v in obj.items():
+            # 处理数组/Series类型的值
+            if hasattr(v, '__len__') and not isinstance(v, (str, bytes)):
+                # 如果是数组/Series，检查是否全部为NaN
+                if len(v) > 0 and not pd.isna(v).all():
+                    cleaned_dict[k] = remove_nan_values(v)
+            # 处理标量值
+            elif v is not None and not (isinstance(v, float) and np.isnan(v)):
+                cleaned_dict[k] = remove_nan_values(v)
+        return cleaned_dict
+    elif isinstance(obj, list):
+        cleaned_list = []
+        for item in obj:
+            # 处理数组/Series类型的值
+            if hasattr(item, '__len__') and not isinstance(item, (str, bytes)):
+                # 如果是数组/Series，检查是否全部为NaN
+                if len(item) > 0 and not pd.isna(item).all():
+                    cleaned_list.append(remove_nan_values(item))
+            # 处理标量值
+            elif item is not None and not (isinstance(item, float) and np.isnan(item)):
+                cleaned_list.append(remove_nan_values(item))
+        return cleaned_list
+    else:
+        return obj
 
 # ========== 3️⃣ 自动识别编码读取 CSV ==========
 def read_csv_auto(path):
     encodings = ["utf-8-sig", "gbk", "gb2312", "utf-8"]
     for enc in encodings:
         try:
-            df = pd.read_csv(path, encoding=enc)
+            df = pd.read_csv(path, encoding=enc, low_memory=False)
             return df
         except Exception:
             continue
@@ -76,26 +101,60 @@ def build_patient_json(case_id):
     df_case_sub = df_case[df_case["病案号"] == case_id]
     if not df_case_sub.empty:
         cols = [c for c in FIELDS["病案首页"] if c in df_case_sub.columns]
-        record["病案首页"] = df_case_sub[cols].iloc[0].dropna().to_dict()
-
+        # 先转换为字典，然后手动处理NaN值
+        case_dict = df_case_sub[cols].iloc[0].to_dict()
+        # 手动过滤NaN值
+        record["病案首页"] = {k: v for k, v in case_dict.items() 
+                            if not (isinstance(v, float) and np.isnan(v))}
+    
     # 检查信息
     df_check_sub = df_check[df_check["病案号"] == case_id]
     if not df_check_sub.empty:
         cols = [c for c in FIELDS["检查信息"] if c in df_check_sub.columns]
-        record["检查信息"] = df_check_sub[cols].dropna(axis=1, how="all").to_dict(orient="records")
-
+        # 删除病案号字段（保留其他字段）
+        cols = [c for c in cols if c != "病案号"]
+        # 先转换为字典，然后手动处理NaN值
+        check_records = df_check_sub[cols].to_dict(orient="records")
+        # 手动过滤每条记录中的NaN值
+        record["检查信息"] = []
+        for rec in check_records:
+            cleaned_rec = {k: v for k, v in rec.items() 
+                          if not (isinstance(v, float) and np.isnan(v))}
+            if cleaned_rec:  # 只添加非空记录
+                record["检查信息"].append(cleaned_rec)
+    
     # 检验信息
     df_test_sub = df_test[df_test["病案号"] == case_id]
     if not df_test_sub.empty:
         cols = [c for c in FIELDS["检验信息"] if c in df_test_sub.columns]
-        record["检验信息"] = df_test_sub[cols].dropna(axis=1, how="all").to_dict(orient="records")
-
+        # 删除病案号字段（保留其他字段）
+        cols = [c for c in cols if c != "病案号"]
+        # 先转换为字典，然后手动处理NaN值
+        test_records = df_test_sub[cols].to_dict(orient="records")
+        # 手动过滤每条记录中的NaN值
+        record["检验信息"] = []
+        for rec in test_records:
+            cleaned_rec = {k: v for k, v in rec.items() 
+                          if not (isinstance(v, float) and np.isnan(v))}
+            if cleaned_rec:  # 只添加非空记录
+                record["检验信息"].append(cleaned_rec)
+    
     # 医嘱信息
     df_order_sub = df_order[df_order["病案号"] == case_id]
     if not df_order_sub.empty:
         cols = [c for c in FIELDS["医嘱信息"] if c in df_order_sub.columns]
-        record["医嘱信息"] = df_order_sub[cols].dropna(axis=1, how="all").to_dict(orient="records")
-
+        # 删除病案号字段（保留其他字段）
+        cols = [c for c in cols if c != "病案号"]
+        # 先转换为字典，然后手动处理NaN值
+        order_records = df_order_sub[cols].to_dict(orient="records")
+        # 手动过滤每条记录中的NaN值
+        record["医嘱信息"] = []
+        for rec in order_records:
+            cleaned_rec = {k: v for k, v in rec.items() 
+                          if not (isinstance(v, float) and np.isnan(v))}
+            if cleaned_rec:  # 只添加非空记录
+                record["医嘱信息"].append(cleaned_rec)
+    
     return record
 
 # ========== 8️⃣ 遍历导出每个病案号 ==========

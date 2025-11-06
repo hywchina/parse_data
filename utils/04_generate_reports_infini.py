@@ -14,7 +14,7 @@ API_KEY = "sk-7xet3afg2b7fumjl"
 BASE_URL = "https://cloud.infini-ai.com/maas/v1"
 MODEL_NAME = "gpt-4o"
 
-CHUNK_SIZE = 100000
+CHUNK_SIZE = 120000
 CONTEXT_SNIPPET_LEN = 2000
 # ==================================
 
