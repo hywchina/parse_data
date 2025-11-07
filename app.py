@@ -27,25 +27,35 @@ DATA_DIRS = {
     "temp": os.path.join(BASE_DIR, "temp"),
 }
 
+# SCRIPTS = [
+#     ("01_parse_xls_to_csv.py", "Excel 转 CSV"),
+#     ("00_read_headers.py", "读取 CSV 标头"),
+#     ("02_rename_pdf.py", "重命名 PDF"),
+#     ("03_merge_csv_to_json.py", "合并 JSON 数据"),
+#     ("04_generate_reports_infini.py", "生成文本报告"),
+#     ("05_merge_txt_to_pdf.py", "合并报告与 PDF"),
+# ]
+
 SCRIPTS = [
-    ("01_parse_xls_to_csv.py", "Excel 转 CSV"),
-    ("00_read_headers.py", "读取 CSV 标头"),
-    ("02_rename_pdf.py", "重命名 PDF"),
-    ("03_merge_csv_to_json.py", "合并 JSON 数据"),
-    ("04_generate_reports_infini.py", "生成文本报告"),
-    ("05_merge_txt_to_pdf.py", "合并报告与 PDF"),
+    ("01_parse_xls_to_csv.py", "数据格式标准化"),
+    ("00_read_headers.py", "字段解析与映射"),
+    ("02_rename_pdf.py", "源文档重命名"),
+    ("03_merge_csv_to_json.py", "多源数据融合"),
+    ("04_generate_reports_infini.py", "AI智能报告生成"),
+    ("05_merge_txt_to_pdf.py", "成果文档整合"),
 ]
 
-recommended_fields_FILE = os.path.join(CONF_DIR, "recommended_fields.json")
-if os.path.exists(recommended_fields_FILE):
+
+headers_default_file = os.path.join(CONF_DIR, "headers_default.json")
+if os.path.exists(headers_default_file):
     try:
-        with open(recommended_fields_FILE, "r", encoding="utf-8") as f:
-            recommended_fields = json.load(f)
+        with open(headers_default_file, "r", encoding="utf-8") as f:
+            headers_default = json.load(f)
     except Exception as e:
         st.warning(f"⚠️ 无法读取推荐字段配置：{e}")
-        recommended_fields = {}
+        headers_default = {}
 else:
-    recommended_fields = {}
+    headers_default = {}
 
 # ---------------- 工具函数 ----------------
 def clean_folders():
@@ -275,7 +285,7 @@ if st.session_state["running"]:
                     new_headers = {}
                     for table_name, fields in headers_data.items():
                         st.markdown(f"**📘 {table_name}**")
-                        rec = recommended_fields.get(table_name)
+                        rec = headers_default.get(table_name)
                         default = [f for f in (rec or []) if f in fields] or fields
                         selected = st.multiselect(
                             f"选择要保留的字段（{table_name}）",
