@@ -1,0 +1,17 @@
+{
+  "default": "infini",
+  "infini": {
+    "api_key": "sk-7xet3afg2b7fumjl",
+    "base_url": "https://cloud.infini-ai.com/maas/v1",
+    "model_name": "gpt-4o",
+    "chunk_size": 120000,
+    "context_snippet_len": 2000
+  },
+  "lmstudio": {
+    "api_key": "lmstudio",
+    "base_url": "http://localhost:1234/v1",
+    "model_name": "gpt-oss-20b",
+    "chunk_size": 120000,
+    "context_snippet_len": 2000
+  }
+}

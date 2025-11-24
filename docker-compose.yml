@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  parse-data:
+    build: .
+    container_name: parse-data-service
+    ports:
+      - "8501:8501"
+    volumes:
+      # 持久化数据目录
+      - ./data_00_ori:/app/data_00_ori
+      - ./data_01_csv:/app/data_01_csv
+      - ./data_02_pdf:/app/data_02_pdf
+      - ./data_03_json:/app/data_03_json
+      - ./data_04_summary_txt:/app/data_04_summary_txt
+      - ./data_05_final_pdf:/app/data_05_final_pdf
+      - ./logs:/app/logs
+      - ./temp:/app/temp
+      # 持久化配置文件
+      - ./conf:/app/conf
+    environment:
+      - TZ=Asia/Shanghai
+    restart: unless-stopped

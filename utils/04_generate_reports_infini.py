@@ -1,5 +1,6 @@
 import os
 import re
+import json
 from openai import OpenAI
 
 # ========== 用户配置 ==========
@@ -7,15 +8,22 @@ INPUT_JSON_DIR = "./data_03_json"
 PDF_DIR = "./data_02_pdf"  # 新增 PDF 对应目录
 PROMPT_FILE = "./conf/prompt.txt"
 OUTPUT_DIR = "./data_04_summary_txt"
+LLM_CONFIG_FILE = "./conf/llm.json"
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-API_KEY = "sk-7xet3afg2b7fumjl"
-BASE_URL = "https://cloud.infini-ai.com/maas/v1"
-MODEL_NAME = "gpt-4o"
+# 从配置文件加载 LLM 配置
+with open(LLM_CONFIG_FILE, "r", encoding="utf-8") as f:
+    llm_config = json.load(f)
 
-CHUNK_SIZE = 120000
-CONTEXT_SNIPPET_LEN = 2000
+default_model = llm_config["default"]
+model_config = llm_config[default_model]
+
+API_KEY = model_config["api_key"]
+BASE_URL = model_config["base_url"]
+MODEL_NAME = model_config["model_name"]
+CHUNK_SIZE = model_config["chunk_size"]
+CONTEXT_SNIPPET_LEN = model_config["context_snippet_len"]
 # ==================================
 
 
