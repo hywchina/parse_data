@@ -15,10 +15,10 @@ docker save -o <保存路径/文件名.tar> <镜像名>:<tag>
 docker load -i <文件名.tar>
 
 
-docker build -t parse-data-service:latest .
+docker build -t parse-data-service:v1.0.0 .
 
 docker run -d -p 8501:8501 \
   -v $(pwd)/conf:/app/conf \
   --name parse-data-service \
-  parse-data-service:latest
+  parse-data-service:v1.0.0
 
