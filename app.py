@@ -16,7 +16,8 @@ os.makedirs(CONF_DIR, exist_ok=True)
 os.makedirs(LOGS_DIR, exist_ok=True)
 
 # 统一日志文件（与 run.sh 命名一致的时间戳格式）
-LOG_FILE = os.path.join(LOGS_DIR, f"parse_data_serve_{datetime.now():%Y%m%d_%H%M}.log")
+# 每日日志文件（与 run.sh 命名一致）
+LOG_FILE = os.path.join(LOGS_DIR, f"parse_data_serve_{datetime.now():%Y%m%d}.log")
 
 HEADERS_FILE = os.path.join(CONF_DIR, "headers.json")
 PROMPT_FILE = os.path.join(CONF_DIR, "prompt.txt")
@@ -106,8 +107,9 @@ def run_script(script_name, log_area, timeout=None):
         else:
             log_area.info(msg)
         try:
+            ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             with open(LOG_FILE, "a", encoding="utf-8") as lf:
-                lf.write(msg + "\n")
+                lf.write(f"[{ts}] {msg}\n")
         except Exception:
             pass
         return False
@@ -127,8 +129,9 @@ def run_script(script_name, log_area, timeout=None):
         logs.append(line)
         # 追加写入到统一日志文件
         try:
+            ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             with open(LOG_FILE, "a", encoding="utf-8") as lf:
-                lf.write(line + "\n")
+                lf.write(f"[{ts}] {line}\n")
         except Exception:
             pass
         if st.session_state.get("show_logs", True):
@@ -146,9 +149,9 @@ def run_script(script_name, log_area, timeout=None):
             timeout_msg = "❌ 脚本执行超时并被终止。"
             logs.append(timeout_msg)
             try:
+                ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 with open(LOG_FILE, "a", encoding="utf-8") as lf:
-                    lf.write(timeout_msg + "\n")
-                
+                    lf.write(f"[{ts}] {timeout_msg}\n")
             except Exception:
                 pass
             break
@@ -161,16 +164,21 @@ def run_script(script_name, log_area, timeout=None):
         if remaining:
             for line in remaining.splitlines():
                 logs.append(line)
-                with open(LOG_FILE, "a", encoding="utf-8") as lf:
-                    lf.write(line + "\n")
+                try:
+                    ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    with open(LOG_FILE, "a", encoding="utf-8") as lf:
+                        lf.write(f"[{ts}] {line}\n")
+                except Exception:
+                    pass
     except Exception:
         pass
     success = process.returncode == 0
     # 记录脚本结束状态
     end_msg = f"脚本 {script_name} 结束，状态：{'成功' if success else '失败'}"
     try:
+        ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         with open(LOG_FILE, "a", encoding="utf-8") as lf:
-            lf.write(end_msg + "\n")
+            lf.write(f"[{ts}] {end_msg}\n")
     except Exception:
         pass
     return success

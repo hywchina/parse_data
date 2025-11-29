@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# 获取当前时间戳
-LOG_FILE="logs/parse_data_serve_$(date +"%Y%m%d_%H%M").log"
+# 获取当天日志文件（每天一个）
+LOG_FILE="logs/parse_data_serve_$(date +"%Y%m%d").log"
 
 # 创建日志目录
 mkdir -p logs
