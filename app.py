@@ -11,7 +11,12 @@ import json
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UTILS_DIR = os.path.join(BASE_DIR, "utils")
 CONF_DIR = os.path.join(BASE_DIR, "conf")
+LOGS_DIR = os.path.join(BASE_DIR, "logs")
 os.makedirs(CONF_DIR, exist_ok=True)
+os.makedirs(LOGS_DIR, exist_ok=True)
+
+# 统一日志文件（与 run.sh 命名一致的时间戳格式）
+LOG_FILE = os.path.join(LOGS_DIR, f"parse_data_serve_{datetime.now():%Y%m%d_%H%M}.log")
 
 HEADERS_FILE = os.path.join(CONF_DIR, "headers.json")
 PROMPT_FILE = os.path.join(CONF_DIR, "prompt.txt")
@@ -95,14 +100,20 @@ def run_script(script_name, log_area, timeout=None):
     script_path = os.path.join(UTILS_DIR, script_name)
     if not os.path.exists(script_path):
         # 若日志可见则写入，否则直接 info
+        msg = f"⚠️ 脚本不存在：{script_name}"
         if st.session_state.get("show_logs", True):
-            log_area.info(f"⚠️ 脚本不存在：{script_name}")
+            log_area.info(msg)
         else:
-            log_area.info(f"⚠️ 脚本不存在：{script_name}")
+            log_area.info(msg)
+        try:
+            with open(LOG_FILE, "a", encoding="utf-8") as lf:
+                lf.write(msg + "\n")
+        except Exception:
+            pass
         return False
 
     process = subprocess.Popen(
-        ["python3", script_path],
+        ["python3", "-u", script_path],
         cwd=BASE_DIR,
         text=True,
         stdout=subprocess.PIPE,
@@ -112,7 +123,14 @@ def run_script(script_name, log_area, timeout=None):
 
     start_time = time.time()
     for line in process.stdout:
-        logs.append(line.rstrip())
+        line = line.rstrip()
+        logs.append(line)
+        # 追加写入到统一日志文件
+        try:
+            with open(LOG_FILE, "a", encoding="utf-8") as lf:
+                lf.write(line + "\n")
+        except Exception:
+            pass
         if st.session_state.get("show_logs", True):
             log_html = (
                 "<div style='background:#111;color:#0f0;padding:10px;height:360px;overflow-y:auto;"
@@ -125,11 +143,36 @@ def run_script(script_name, log_area, timeout=None):
         time.sleep(0.02)
         if timeout and (time.time() - start_time) > timeout:
             process.kill()
-            logs.append("❌ 脚本执行超时并被终止。")
+            timeout_msg = "❌ 脚本执行超时并被终止。"
+            logs.append(timeout_msg)
+            try:
+                with open(LOG_FILE, "a", encoding="utf-8") as lf:
+                    lf.write(timeout_msg + "\n")
+                
+            except Exception:
+                pass
             break
 
+    # 等待子进程结束
     process.wait()
+    # 读取可能残留未消费的输出（包含异常回溯尾部）
+    try:
+        remaining = process.stdout.read() or ""
+        if remaining:
+            for line in remaining.splitlines():
+                logs.append(line)
+                with open(LOG_FILE, "a", encoding="utf-8") as lf:
+                    lf.write(line + "\n")
+    except Exception:
+        pass
     success = process.returncode == 0
+    # 记录脚本结束状态
+    end_msg = f"脚本 {script_name} 结束，状态：{'成功' if success else '失败'}"
+    try:
+        with open(LOG_FILE, "a", encoding="utf-8") as lf:
+            lf.write(end_msg + "\n")
+    except Exception:
+        pass
     return success
 
 # ---------------- Streamlit 页面布局 ----------------
