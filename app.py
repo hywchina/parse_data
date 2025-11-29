@@ -3,7 +3,7 @@ import os
 import shutil
 import subprocess
 import zipfile
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import time
 import json
 
@@ -107,7 +107,8 @@ def run_script(script_name, log_area, timeout=None):
         else:
             log_area.info(msg)
         try:
-            ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            tz = timezone(timedelta(hours=8))
+            ts = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
             with open(LOG_FILE, "a", encoding="utf-8") as lf:
                 lf.write(f"[{ts}] {msg}\n")
         except Exception:
@@ -129,7 +130,8 @@ def run_script(script_name, log_area, timeout=None):
         logs.append(line)
         # 追加写入到统一日志文件
         try:
-            ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            tz = timezone(timedelta(hours=8))
+            ts = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
             with open(LOG_FILE, "a", encoding="utf-8") as lf:
                 lf.write(f"[{ts}] {line}\n")
         except Exception:
@@ -149,7 +151,8 @@ def run_script(script_name, log_area, timeout=None):
             timeout_msg = "❌ 脚本执行超时并被终止。"
             logs.append(timeout_msg)
             try:
-                ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                tz = timezone(timedelta(hours=8))
+                ts = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
                 with open(LOG_FILE, "a", encoding="utf-8") as lf:
                     lf.write(f"[{ts}] {timeout_msg}\n")
             except Exception:
@@ -165,7 +168,8 @@ def run_script(script_name, log_area, timeout=None):
             for line in remaining.splitlines():
                 logs.append(line)
                 try:
-                    ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    tz = timezone(timedelta(hours=8))
+                    ts = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
                     with open(LOG_FILE, "a", encoding="utf-8") as lf:
                         lf.write(f"[{ts}] {line}\n")
                 except Exception:
@@ -176,7 +180,8 @@ def run_script(script_name, log_area, timeout=None):
     # 记录脚本结束状态
     end_msg = f"脚本 {script_name} 结束，状态：{'成功' if success else '失败'}"
     try:
-        ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        tz = timezone(timedelta(hours=8))
+        ts = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
         with open(LOG_FILE, "a", encoding="utf-8") as lf:
             lf.write(f"[{ts}] {end_msg}\n")
     except Exception:
