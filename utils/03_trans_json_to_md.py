@@ -86,7 +86,7 @@ def format_field_value(key, value):
 def generate_case_header(case_data):
     """生成病案首页内容"""
     lines = []
-    lines.append("## 📊 基本信息（病案首页）\n")
+    lines.append("### 一、基本信息（病案首页）\n")
     
     # 重要字段
     for field in CASE_INFO_FIELDS:
@@ -96,7 +96,7 @@ def generate_case_header(case_data):
                 lines.append(f"- {formatted}")
     
     # 其他字段
-    lines.append("\n### 其他信息")
+    lines.append("\n#### 其他信息")
     for key, value in case_data.items():
         if key not in CASE_INFO_FIELDS and value:
             formatted = format_field_value(key, value)
@@ -109,14 +109,14 @@ def generate_case_header(case_data):
 def generate_admission_record(records):
     """生成入院记录内容"""
     if not records:
-        return "## 📝 入院记录\n\n> 无数据\n"
+        return "### 二、入院记录\n\n> 无数据\n"
     
     lines = []
-    lines.append("## 📝 入院记录\n")
+    lines.append("### 二、入院记录\n")
     
     for idx, record in enumerate(records, 1):
         if len(records) > 1:
-            lines.append(f"### 入院记录 #{idx}\n")
+            lines.append(f"#### 入院记录 #{idx}\n")
         
         for key, value in record.items():
             formatted = format_field_value(key, value)
@@ -127,7 +127,7 @@ def generate_admission_record(records):
     return "\n".join(lines)
 
 
-def generate_test_reports(records, title="🔬 检验报告", fields=None):
+def generate_test_reports(records, title="检验报告", fields=None):
     """
     生成检验报告内容（直接用表格展示）
     
@@ -137,7 +137,7 @@ def generate_test_reports(records, title="🔬 检验报告", fields=None):
         fields: 要显示的字段列表（如果为None，则从HEADERS_CONFIG读取）
     """
     if not records:
-        return f"## {title}\n\n> 无数据\n"
+        return f"### 三、{title}\n\n> 无数据\n"
     
     if fields is None:
         # 从 headers.json 中的"检验报告"字段列表读取
@@ -147,7 +147,7 @@ def generate_test_reports(records, title="🔬 检验报告", fields=None):
             fields = ["检验项目", "结果", "结果提示", "参考范围", "审核日期"]
     
     lines = []
-    lines.append(f"## {title}（共 {len(records)} 条）\n")
+    lines.append(f"### 三、{title}（共 {len(records)} 条）\n")
     
     # 按时间排序
     sorted_records = sorted(records, key=extract_datetime)
@@ -189,7 +189,7 @@ def clean_table_value(value):
 def generate_check_reports(records):
     """生成检查报告内容（直接用表格展示，表头从HEADERS_CONFIG读取）"""
     if not records:
-        return "## 🏥 检查报告\n\n> 无数据\n"
+        return "### 四、检查报告\n\n> 无数据\n"
     
     # 从 headers.json 中的"检查报告"字段列表读取
     check_report_fields = HEADERS_CONFIG.get("检查报告", [])
@@ -198,7 +198,7 @@ def generate_check_reports(records):
         check_report_fields = ["检查日期", "检查项目名称", "检查描述", "检查结果"]
     
     lines = []
-    lines.append(f"## 🏥 检查报告（共 {len(records)} 条）\n")
+    lines.append(f"### 四、检查报告（共 {len(records)} 条）\n")
     
     # 按时间排序
     sorted_records = sorted(records, key=extract_datetime)
@@ -224,7 +224,7 @@ def generate_check_reports(records):
 def generate_orders(records):
     """生成医嘱明细内容（直接用表格展示，表头从HEADERS_CONFIG读取）"""
     if not records:
-        return "## 💊 医嘱明细\n\n> 无数据\n"
+        return "### 五、医嘱明细\n\n> 无数据\n"
     
     # 从 headers.json 中的"医嘱明细"字段列表读取
     order_fields = HEADERS_CONFIG.get("医嘱明细", [])
@@ -233,7 +233,7 @@ def generate_orders(records):
         order_fields = ["医嘱开始日期", "医嘱开始时间", "医嘱类型", "医嘱编码", "医嘱名称", "医嘱子类", "开单科室", "开单医师", "医嘱停止日期", "医嘱停止时间"]
     
     lines = []
-    lines.append(f"## 💊 医嘱明细（共 {len(records)} 条）\n")
+    lines.append(f"### 五、医嘱明细（共 {len(records)} 条）\n")
     
     # 按时间排序
     sorted_records = sorted(records, key=extract_datetime)
@@ -259,9 +259,7 @@ def generate_orders(records):
 def json_to_markdown(json_data, case_id):
     """将 JSON 数据转换为 Markdown 格式（方案一：时间线+分类展示）"""
     lines = []
-    
-    # 标题
-    lines.append(f"# 病案号：{case_id}\n")
+    lines.append(f"## 病案号：{case_id}\n")
     lines.append("---\n")
     
     # 1. 病案首页
