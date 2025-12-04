@@ -4,10 +4,11 @@ import os
 # ===== 文件路径配置（请根据你的路径修改） =====
 base_dir = "./data_01_csv/"
 files = {
-    "检查信息": f"{base_dir}检查信息.csv",
     "病案首页": f"{base_dir}病案首页.csv",
-    "检验信息": f"{base_dir}检验信息.csv",
-    "医嘱信息": f"{base_dir}医嘱信息.csv"
+    "检查报告": f"{base_dir}检查报告.csv",
+    "检验报告": f"{base_dir}检验报告.csv",
+    "入院记录": f"{base_dir}入院记录.csv",
+    "医嘱明细": f"{base_dir}医嘱明细.csv"
 }
 
 # ===== 自动识别编码读取函数 =====
