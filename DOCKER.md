@@ -5,7 +5,7 @@
 在 `parse_data` 目录下执行：
 
 ```bash
-docker build -t parse-data-service:latest .
+docker build -t parse-data-service:v1.0.0 .
 ```
 
 ## 运行容器

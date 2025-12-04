@@ -30,10 +30,8 @@ COPY utils/ ./utils/
 RUN mkdir -p logs \
     data_00_ori \
     data_01_csv \
-    data_02_pdf \
-    data_03_json \
-    data_04_summary_txt \
-    data_05_final_pdf \
+    data_02_json \
+    data_03_md \
     temp
 
 # 暴露 Streamlit 默认端口

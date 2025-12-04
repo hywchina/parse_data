@@ -180,6 +180,9 @@ def clean_table_value(value):
     value_str = value_str.replace("\n", " ").replace("\r", " ").replace("\t", " ")
     # 移除多余的空格
     value_str = " ".join(value_str.split())
+    # 转义 Markdown 表格分隔符 '|'，防止单元格内含 '|' 导致表格列错位
+    if '|' in value_str:
+        value_str = value_str.replace('|', '\\|')
     # 截断过长的内容
     if len(value_str) > 50:
         value_str = value_str[:47] + "..."
