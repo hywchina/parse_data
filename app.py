@@ -196,7 +196,7 @@ else:
 cols = st.columns(4)
 steps_placeholders = []
 for i, (_, cname) in enumerate(SCRIPTS):
-    with cols[i % 3]:
+    with cols[i]:
         ph = st.empty()
         ph.markdown(f"⚪ **{cname}** — 未开始")
         steps_placeholders.append(ph)
