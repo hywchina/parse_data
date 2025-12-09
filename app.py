@@ -6,14 +6,36 @@ import zipfile
 from datetime import datetime, timezone, timedelta
 import time
 import json
+import sys
+
+# 导入鲁棒性工具
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'utils'))
+try:
+    from robust_utils import (
+        RobustLogger, PathValidator, FileOperationHelper, JSONHelper,
+        DataValidator, DirectoryHelper, EnvironmentChecker, ExceptionHandler,
+        run_startup_checks, retry
+    )
+    ROBUST_UTILS_AVAILABLE = True
+except ImportError:
+    ROBUST_UTILS_AVAILABLE = False
+
+# 初始化日志系统
+logger = RobustLogger() if ROBUST_UTILS_AVAILABLE else None
 
 # ---------------- 路径配置 ----------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UTILS_DIR = os.path.join(BASE_DIR, "utils")
 CONF_DIR = os.path.join(BASE_DIR, "conf")
 LOGS_DIR = os.path.join(BASE_DIR, "logs")
-os.makedirs(CONF_DIR, exist_ok=True)
-os.makedirs(LOGS_DIR, exist_ok=True)
+
+# 安全创建目录
+if ROBUST_UTILS_AVAILABLE:
+    PathValidator.ensure_directory(CONF_DIR)
+    PathValidator.ensure_directory(LOGS_DIR)
+else:
+    os.makedirs(CONF_DIR, exist_ok=True)
+    os.makedirs(LOGS_DIR, exist_ok=True)
 
 # 统一日志文件（与 run.sh 命名一致的时间戳格式）
 # 每日日志文件（与 run.sh 命名一致）
@@ -32,6 +54,40 @@ DATA_DIRS = {
     "final": os.path.join(BASE_DIR, "data_05_final_pdf"),
     "temp": os.path.join(BASE_DIR, "temp"),
 }
+
+# 启动时的鲁棒性检查（可选）
+if ROBUST_UTILS_AVAILABLE:
+    @st.cache_resource
+    def _init_checks():
+        run_startup_checks(DATA_DIRS)
+    
+    # 只在首次加载时执行
+    try:
+        _init_checks()
+    except Exception as e:
+        if logger:
+            logger.warning(f"启动检查失败: {e}")
+
+
+def _log_message(message: str, level: str = "info"):
+    """
+    统一的日志记录函数
+    
+    Args:
+        message: 消息内容
+        level: 日志级别 (info, warning, error, debug)
+    """
+    if logger:
+        getattr(logger, level)(message)
+    
+    # 写入日志文件
+    try:
+        tz = timezone(timedelta(hours=8))
+        ts = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(f"[{ts}] [{level.upper()}] {message}\n")
+    except Exception:
+        pass
 
 # SCRIPTS = [
 #     ("01_parse_xls_to_csv.py", "Excel 转 CSV"),
@@ -53,54 +109,254 @@ SCRIPTS = [
 
 
 headers_default_file = os.path.join(CONF_DIR, "headers_default.json")
-if os.path.exists(headers_default_file):
-    try:
-        with open(headers_default_file, "r", encoding="utf-8") as f:
-            headers_default = json.load(f)
-    except Exception as e:
-        st.warning(f"⚠️ 无法读取推荐字段配置：{e}")
-        headers_default = {}
+headers_default = {}
+if ROBUST_UTILS_AVAILABLE:
+    headers_default = JSONHelper.safe_load_json(headers_default_file, default={})
+    if not headers_default:
+        _log_message(f"推荐字段配置文件不存在或为空: {headers_default_file}", "warning")
 else:
-    headers_default = {}
+    if os.path.exists(headers_default_file):
+        try:
+            with open(headers_default_file, "r", encoding="utf-8") as f:
+                headers_default = json.load(f)
+        except Exception as e:
+            st.warning(f"⚠️ 无法读取推荐字段配置：{e}")
+            headers_default = {}
 
-# ---------------- 工具函数 ----------------
-def clean_folders():
-    for key in ["ori", "csv", "pdf", "json", "txt", "final"]:
-        path = DATA_DIRS[key]
-        if os.path.exists(path):
-            shutil.rmtree(path)
-        os.makedirs(path, exist_ok=True)
-    os.makedirs(DATA_DIRS["temp"], exist_ok=True)
+# ==================== 增强的工具函数 ====================
 
-def save_uploaded_files(uploaded_files):
-    clean_folders()
-    saved = []
-    os.makedirs(DATA_DIRS["ori"], exist_ok=True)
+def validate_file_size(file_path: str, max_size_mb: int = 100) -> bool:
+    """
+    验证文件大小
+    
+    Args:
+        file_path: 文件路径
+        max_size_mb: 最大允许大小（MB）
+        
+    Returns:
+        文件是否符合大小限制
+    """
+    try:
+        file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+        if file_size_mb > max_size_mb:
+            _log_message(f"文件过大: {file_path} ({file_size_mb:.2f} MB)", "warning")
+            return False
+        return True
+    except Exception as e:
+        _log_message(f"无法验证文件大小: {e}", "error")
+        return False
+
+
+def validate_upload_files(uploaded_files: list) -> Tuple[bool, str]:
+    """
+    验证上传的文件
+    
+    Args:
+        uploaded_files: 上传的文件列表
+        
+    Returns:
+        (验证是否通过, 错误消息)
+    """
+    if not uploaded_files:
+        return False, "未选择文件"
+    
+    # 检查文件数量
+    if len(uploaded_files) > 50:
+        return False, f"文件数量过多 ({len(uploaded_files)}/50)"
+    
+    # 检查文件大小和格式
     for file in uploaded_files:
-        dest = os.path.join(DATA_DIRS["ori"], file.name)
-        with open(dest, "wb") as f:
-            f.write(file.getbuffer())
-        saved.append(dest)
-    return saved
+        if not file.name:
+            return False, "存在无效的文件名"
+        
+        # 检查文件大小
+        file_size_mb = len(file.getbuffer()) / (1024 * 1024)
+        if file_size_mb > 100:
+            return False, f"文件 {file.name} 过大 ({file_size_mb:.2f} MB)"
+    
+    _log_message(f"文件验证通过，共 {len(uploaded_files)} 个文件", "info")
+    return True, ""
 
-def make_zip():
-    os.makedirs(DATA_DIRS["temp"], exist_ok=True)
-    folder = DATA_DIRS["final"]
-    if not os.path.exists(folder) or not os.listdir(folder):
-        st.error("❌ 没有生成 PDF 文件，请先执行转换。")
+
+def clean_folders():
+    """
+    清理数据文件夹
+    使用鲁棒性工具进行安全清理
+    """
+    _log_message("开始清理数据文件夹", "info")
+    
+    try:
+        for key in ["ori", "csv", "pdf", "json", "txt", "final"]:
+            path = DATA_DIRS[key]
+            
+            if ROBUST_UTILS_AVAILABLE:
+                # 使用鲁棒性工具
+                DirectoryHelper.safe_clean_directory(path)
+            else:
+                # 回退到原始方法
+                if os.path.exists(path):
+                    shutil.rmtree(path)
+                os.makedirs(path, exist_ok=True)
+        
+        # 创建 temp 目录
+        if ROBUST_UTILS_AVAILABLE:
+            PathValidator.ensure_directory(DATA_DIRS["temp"])
+        else:
+            os.makedirs(DATA_DIRS["temp"], exist_ok=True)
+        
+        _log_message("数据文件夹清理完成", "info")
+        return True
+        
+    except Exception as e:
+        _log_message(f"清理文件夹失败: {e}", "error")
+        return False
+
+
+def save_uploaded_files(uploaded_files: list) -> Tuple[List[str], bool]:
+    """
+    保存上传的文件
+    
+    Args:
+        uploaded_files: 上传的文件列表
+        
+    Returns:
+        (已保存的文件列表, 是否全部成功)
+    """
+    _log_message(f"开始保存 {len(uploaded_files)} 个上传的文件", "info")
+    
+    # 首先清理文件夹
+    if not clean_folders():
+        return [], False
+    
+    saved = []
+    failed = []
+    ori_dir = DATA_DIRS["ori"]
+    
+    try:
+        if ROBUST_UTILS_AVAILABLE:
+            PathValidator.ensure_directory(ori_dir)
+        else:
+            os.makedirs(ori_dir, exist_ok=True)
+        
+        for file in uploaded_files:
+            try:
+                # 验证文件名安全性
+                if not file.name or "/" in file.name or "\\" in file.name:
+                    failed.append((file.name, "无效的文件名"))
+                    continue
+                
+                dest = os.path.join(ori_dir, file.name)
+                
+                # 检查目标文件是否已存在
+                if os.path.exists(dest):
+                    _log_message(f"目标文件已存在，将被覆盖: {file.name}", "warning")
+                
+                # 保存文件
+                with open(dest, "wb") as f:
+                    f.write(file.getbuffer())
+                
+                # 验证文件大小
+                if not validate_file_size(dest, max_size_mb=100):
+                    failed.append((file.name, "文件大小超限"))
+                    os.remove(dest)
+                    continue
+                
+                saved.append(dest)
+                _log_message(f"文件保存成功: {file.name}", "debug")
+                
+            except PermissionError:
+                failed.append((file.name, "权限不足"))
+                _log_message(f"权限错误: {file.name}", "error")
+            except IOError as e:
+                failed.append((file.name, f"IO错误: {str(e)}"))
+                _log_message(f"IO错误: {file.name} - {e}", "error")
+            except Exception as e:
+                failed.append((file.name, str(e)))
+                _log_message(f"未知错误: {file.name} - {e}", "error")
+        
+        success = len(failed) == 0
+        _log_message(
+            f"文件保存完成: 成功 {len(saved)}, 失败 {len(failed)}",
+            "info" if success else "warning"
+        )
+        
+        return saved, success
+        
+    except Exception as e:
+        _log_message(f"保存文件过程失败: {e}", "error")
+        return saved, False
+
+
+def make_zip() -> Optional[str]:
+    """
+    生成 ZIP 压缩包
+    
+    Returns:
+        ZIP 文件路径或 None
+    """
+    _log_message("开始生成 ZIP 压缩包", "info")
+    
+    try:
+        folder = DATA_DIRS["final"]
+        
+        # 验证输出目录
+        if not os.path.exists(folder):
+            _log_message(f"输出目录不存在: {folder}", "error")
+            st.error("❌ 没有生成 PDF 文件，请先执行转换。")
+            return None
+        
+        files = os.listdir(folder)
+        if not files:
+            _log_message(f"输出目录为空: {folder}", "warning")
+            st.error("❌ 没有生成 PDF 文件，请先执行转换。")
+            return None
+        
+        # 创建 temp 目录
+        if ROBUST_UTILS_AVAILABLE:
+            PathValidator.ensure_directory(DATA_DIRS["temp"])
+        else:
+            os.makedirs(DATA_DIRS["temp"], exist_ok=True)
+        
+        # 生成 ZIP 文件
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        zip_path = os.path.join(DATA_DIRS["temp"], f"final_output_{timestamp}.zip")
+        
+        total_size = 0
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+            for file in files:
+                fpath = os.path.join(folder, file)
+                if os.path.isfile(fpath):
+                    try:
+                        zipf.write(fpath, arcname=file)
+                        total_size += os.path.getsize(fpath)
+                        _log_message(f"已添加到 ZIP: {file}", "debug")
+                    except Exception as e:
+                        _log_message(f"添加文件到 ZIP 失败: {file} - {e}", "warning")
+        
+        size_mb = total_size / (1024 * 1024)
+        _log_message(f"ZIP 生成成功: {zip_path} ({size_mb:.2f} MB)", "info")
+        return zip_path
+        
+    except FileNotFoundError as e:
+        _log_message(f"文件未找到: {e}", "error")
+        st.error(f"❌ 生成 ZIP 失败: 文件未找到")
         return None
-    zip_path = os.path.join(DATA_DIRS["temp"], f"final_output_{datetime.now():%Y%m%d_%H%M%S}.zip")
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
-        for f in os.listdir(folder):
-            fpath = os.path.join(folder, f)
-            zipf.write(fpath, arcname=f)
-    return zip_path
+    except PermissionError:
+        _log_message("权限不足，无法生成 ZIP", "error")
+        st.error("❌ 生成 ZIP 失败: 权限不足")
+        return None
+    except Exception as e:
+        _log_message(f"生成 ZIP 失败: {e}", "error")
+        st.error(f"❌ 生成 ZIP 失败: {str(e)}")
+        return None
+
 
 def run_script(script_name, log_area, timeout=None):
     logs = []
     script_path = os.path.join(UTILS_DIR, script_name)
+    
+    # 验证脚本文件存在
     if not os.path.exists(script_path):
-        # 若日志可见则写入，否则直接 info
         msg = f"⚠️ 脚本不存在：{script_name}"
         if st.session_state.get("show_logs", True):
             log_area.info(msg)
